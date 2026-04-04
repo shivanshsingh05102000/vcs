@@ -1,3 +1,4 @@
+const chalk = require('chalk');
 const { readObject } = require('../lib/objects');
 const { readRef, readHEAD } = require('../lib/refs');
 
@@ -9,7 +10,7 @@ function log() {
     let currentHash = branch ? readRef(branch) : head;
 
     if (!currentHash) {
-        console.log('No commits yet');
+        console.log(chalk.yellow('No commits yet'));
         return;
     }
 
@@ -17,14 +18,14 @@ function log() {
         const commit = readObject(currentHash);
         const lines = commit.content.split('\n');
 
-        const author = lines.find(l => l.startsWith('author'));
+        const author    = lines.find(l => l.startsWith('author'));
         const timestamp = lines.find(l => l.startsWith('timestamp'));
-        const message = lines[lines.length - 1];
+        const message   = lines[lines.length - 1];
 
-        console.log(`\ncommit ${currentHash}`);
-        console.log(author);
-        console.log(timestamp);
-        console.log(`\n    ${message}`);
+        console.log(chalk.yellow(`\ncommit ${currentHash}`));
+        console.log(chalk.cyan(author));
+        console.log(chalk.gray(timestamp));
+        console.log(`\n    ${chalk.bold(message)}`);
 
         const parentLine = lines.find(l => l.startsWith('parent'));
         currentHash = parentLine ? parentLine.split(' ')[1] : null;

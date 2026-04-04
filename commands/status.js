@@ -1,4 +1,5 @@
 const fs = require('fs');
+const chalk = require('chalk');
 const { readObject, writeObject } = require('../lib/objects');
 const { readIndex } = require('../lib/index');
 const { readRef, readHEAD } = require('../lib/refs');
@@ -29,39 +30,40 @@ function status() {
         } catch (e) { /* no commits yet */ }
     }
 
-    // staged: index vs HEAD tree
     const staged = [];
     for (const [file, hash] of Object.entries(index)) {
-        if (!headTree[file]) staged.push(`  new file: ${file}`);
-        else if (headTree[file] !== hash) staged.push(`  modified: ${file}`);
+        if (!headTree[file]) staged.push(chalk.green(`  new file:  ${file}`));
+        else if (headTree[file] !== hash) staged.push(chalk.green(`  modified:  ${file}`));
     }
 
-    // unstaged: disk vs index
     const unstaged = [];
     for (const [file, hash] of Object.entries(index)) {
         if (!fs.existsSync(file)) {
-            unstaged.push(`  deleted: ${file}`);
+            unstaged.push(chalk.red(`  deleted:   ${file}`));
         } else {
             const diskHash = writeObject('blob', fs.readFileSync(file));
-            if (diskHash !== hash) unstaged.push(`  modified: ${file}`);
+            if (diskHash !== hash) unstaged.push(chalk.red(`  modified:  ${file}`));
         }
     }
 
-    // untracked
     const untracked = fs.readdirSync('.')
-        .filter(f => !f.startsWith('.') && !index[f] && !IGNORE.includes(f));
+        .filter(f => !f.startsWith('.') && !index[f] && !IGNORE.includes(f))
+        .map(f => chalk.gray(`  ${f}`));
 
-    const onBranch = branch || `detached HEAD at ${head.slice(0, 7)}`;
-    console.log(`\nOn branch ${onBranch}`);
+    const onBranch = branch
+        ? chalk.bold(`On branch ${chalk.cyan(branch)}`)
+        : chalk.yellow(`HEAD detached at ${head.slice(0, 7)}`);
+
+    console.log(`\n${onBranch}`);
 
     console.log('\nChanges to be committed:');
-    staged.length ? staged.forEach(l => console.log(l)) : console.log('  nothing');
+    staged.length ? staged.forEach(l => console.log(l)) : console.log(chalk.gray('  nothing'));
 
     console.log('\nChanges not staged for commit:');
-    unstaged.length ? unstaged.forEach(l => console.log(l)) : console.log('  nothing');
+    unstaged.length ? unstaged.forEach(l => console.log(l)) : console.log(chalk.gray('  nothing'));
 
     console.log('\nUntracked files:');
-    untracked.length ? untracked.forEach(f => console.log(`  ${f}`)) : console.log('  nothing');
+    untracked.length ? untracked.forEach(f => console.log(f)) : console.log(chalk.gray('  nothing'));
 }
 
 module.exports = status;

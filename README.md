@@ -148,6 +148,10 @@ vcs/
 ```
 
 ---
+## References
+- [Pro Git Book](https://git-scm.com/book/en/v2) — used to understand Git's internal object model
+
+---
 
 ## Author
 
