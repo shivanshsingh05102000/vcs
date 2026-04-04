@@ -14,7 +14,7 @@
     "url": "git+https://github.com/shivanshsingh05102000/vcs.git"
   },
   "license": "ISC",
-  "author": "",
+  "author": "shivansh singh",
   "type": "commonjs",
   "main": "cli.js",
   "directories": {
