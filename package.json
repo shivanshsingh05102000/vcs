@@ -1,0 +1,27 @@
+{
+  "name": "vcs",
+  "version": "1.0.0",
+  "description": "version control system",
+  "homepage": "https://github.com/shivanshsingh05102000/vcs#readme",
+  "bugs": {
+    "url": "https://github.com/shivanshsingh05102000/vcs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shivanshsingh05102000/vcs.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "cli.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "js-sha256": "^0.11.1"
+  }
+}
