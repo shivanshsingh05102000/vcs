@@ -1,6 +1,9 @@
 {
   "name": "vcs",
   "version": "1.0.0",
+  "bin": {
+    "vcs": "./cli.js"
+  },
   "description": "version control system",
   "homepage": "https://github.com/shivanshsingh05102000/vcs#readme",
   "bugs": {

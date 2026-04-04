@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const init = require('./commands/init');
 const add = require('./commands/add');
 const commit = require('./commands/commit');
