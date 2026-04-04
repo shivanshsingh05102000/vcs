@@ -28,12 +28,13 @@ Creates a `.vcs/` directory with the object store, refs, and HEAD.
 
 ---
 
-### `vcs add <filename>`
-Stage a file for the next commit.
+### `vcs add <file|.>`
+Stage a file or all files for the next commit.
 ```bash
 vcs add app.js
+vcs add .
+vcs add app.js cli.js
 ```
-Hashes the file content and writes it to the object store. Updates the staging index.
 
 ---
 
@@ -47,7 +48,7 @@ Builds a tree object from the index and creates a commit object pointing to it.
 ---
 
 ### `vcs status`
-Show staged, unstaged, and untracked files.
+Show staged, unstaged, and untracked files — color coded.
 ```bash
 vcs status
 ```
@@ -58,6 +59,14 @@ vcs status
 Print the commit history for the current branch.
 ```bash
 vcs log
+```
+
+---
+
+### `vcs diff`
+Show unstaged changes compared to the staging area — red for removed, green for added.
+```bash
+vcs diff
 ```
 
 ---
@@ -97,6 +106,18 @@ Fix conflicts manually, then run `vcs commit -m "merge commit"`.
 
 ---
 
+### `vcs rm <file>`
+Remove a file from disk and the index.
+```bash
+vcs rm app.js
+```
+Use `--cached` to unstage only, keeping the file on disk:
+```bash
+vcs rm --cached app.js
+```
+
+---
+
 ## How It Works
 
 | Concept | Implementation |
@@ -109,6 +130,8 @@ Fix conflicts manually, then run `vcs commit -m "merge commit"`.
 | Commit | Points to a tree + optional parent + metadata |
 | Refs | Branch pointers stored as plain text in `.vcs/refs/heads/` |
 | HEAD | Stores current branch ref or commit hash (detached) |
+| Diff | Myers algorithm — finds shortest edit script between two files |
+| Merge | 3-way merge with BFS-based Lowest Common Ancestor |
 
 ---
 
@@ -117,7 +140,8 @@ Fix conflicts manually, then run `vcs commit -m "merge commit"`.
 - **Runtime:** Node.js
 - **Hashing:** Node `crypto` (SHA-256)
 - **Compression:** Node `zlib`
-- **No frameworks — zero runtime dependencies beyond `js-sha256`**
+- **Colors:** `chalk` v4
+- **No heavy frameworks — minimal dependencies**
 
 ---
 
@@ -125,30 +149,32 @@ Fix conflicts manually, then run `vcs commit -m "merge commit"`.
 
 ```
 vcs/
-├── cli.js              # Entry point, command router
+├── cli.js                  # Entry point, command router
 ├── commands/
 │   ├── init.js
-│   ├── add.js
+│   ├── add.js              # Multi-file staging, supports vcs add .
 │   ├── commit.js
-│   ├── status.js
-│   ├── log.js
+│   ├── status.js           # Color-coded output
+│   ├── log.js              # Color-coded commit history
+│   ├── diff.js             # Shows unstaged changes with context
 │   ├── branch.js
-│   ├── checkout.js
-│   └── merge.js
+│   ├── checkout.js         # Supports branch name or commit hash
+│   ├── merge.js            # Fast-forward + 3-way merge
+│   └── rm.js               # Remove or unstage files
 ├── lib/
-│   ├── objects.js      # Blob/tree/commit read & write
-│   ├── refs.js         # HEAD and branch ref management
-│   ├── index.js        # Staging area (JSON)
-│   ├── diff.js         # Line-level diff
-│   └── merge.js        # LCA finder + 3-way merge
+│   ├── objects.js          # Blob/tree/commit read & write
+│   ├── refs.js             # HEAD and branch ref management
+│   ├── index.js            # Staging area (JSON)
+│   ├── diff.js             # Myers diff algorithm
+│   └── merge.js            # BFS LCA finder + 3-way merge
 └── test/
-    ├── objects.test.js
-    ├── diff.test.js
-    └── merge.test.js
+    └── Vcs.test.js         # 13 assertions across diff, merge, objects
 ```
 
 ---
+
 ## References
+
 - [Pro Git Book](https://git-scm.com/book/en/v2) — used to understand Git's internal object model
 
 ---
