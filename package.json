@@ -22,6 +22,7 @@
     "test": "test"
   },
   "scripts": {
+    "start":  "node server/index.js",
     "test": "node test/vcs.test.js && node test/server.test.js && node test/p2.test.js",
     "server": "node server/index.js",
     "server:dev": "node --watch server/index.js",
