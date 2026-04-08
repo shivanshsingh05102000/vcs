@@ -1,56 +1,101 @@
 const fs = require('fs');
+const path = require('path');
+const { readRef, writeHEAD } = require('../lib/refs');
 const { readObject } = require('../lib/objects');
 const { writeIndex } = require('../lib/index');
-const { writeHEAD, readRef } = require('../lib/refs');
+
+const IGNORE = ['.vcs', '.git', 'node_modules', 'package-lock.json'];
+
+/**
+ * Parse a tree object's content into a { filename -> blobHash } map.
+ * Tree entries are stored as "100644 <n>\0<hash>" lines.
+ */
+function parseTree(treeContent) {
+    const map = {};
+    for (const line of treeContent.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        const nullIdx = trimmed.indexOf('\0');
+        if (nullIdx === -1) continue;
+        const namePart = trimmed.slice(trimmed.indexOf(' ') + 1, nullIdx);
+        const hashPart = trimmed.slice(nullIdx + 1);
+        map[namePart] = hashPart;
+    }
+    return map;
+}
+
+/**
+ * Recursively collect all non-ignored files under a directory.
+ */
+function getWorkingFiles(dir) {
+    dir = dir || '.';
+    const results = [];
+    for (const entry of fs.readdirSync(dir)) {
+        if (IGNORE.includes(entry)) continue;
+        const full = path.join(dir, entry);
+        if (fs.statSync(full).isDirectory()) {
+            results.push.apply(results, getWorkingFiles(full));
+        } else {
+            results.push(full.replace(/\\/g, '/'));
+        }
+    }
+    return results;
+}
 
 function checkout(args) {
-    const target = args[0];
+    const targetBranch = args[0];
 
-    if (!target) {
-        console.error('Usage: vcs checkout <branch|hash>');
+    if (!targetBranch) {
+        console.error('Usage: vcs checkout <branch>');
         return;
     }
 
-    // check if target is a branch name first
-    const branchHash = readRef(target);
-    const commitHash = branchHash || target;
-
-    let commit;
-    try {
-        commit = readObject(commitHash);
-    } catch (e) {
-        console.error(`Not a valid branch or commit hash: ${target}`);
+    // 1. Resolve target commit hash from branch ref
+    const targetCommitHash = readRef(targetBranch);
+    if (!targetCommitHash) {
+        console.error('Branch not found: ' + targetBranch);
         return;
     }
 
-    if (commit.type !== 'commit') {
-        console.error('Not a valid commit');
+    // 2. Read target commit to get tree hash
+    const commitObj = readObject(targetCommitHash);
+    const treeHashMatch = commitObj.content.match(/^tree ([a-f0-9]+)/m);
+    if (!treeHashMatch) {
+        console.error('Corrupt commit: missing tree');
         return;
     }
+    const treeHash = treeHashMatch[1];
+    const treeObj = readObject(treeHash);
+    const targetFiles = parseTree(treeObj.content);
 
-    const treeLine = commit.content.split('\n').find(l => l.startsWith('tree'));
-    const treeHash = treeLine.split(' ')[1];
-    const tree = readObject(treeHash);
-
-    const newIndex = {};
-    tree.content.split('\n').forEach(entry => {
-        const [meta, blobHash] = entry.split('\0');
-        const filename = meta.split(' ')[1];
-        const blob = readObject(blobHash);
-        // content is always a string now (fixed in objects.js)
-        fs.writeFileSync(filename, blob.content, 'utf-8');
-        newIndex[filename] = blobHash;
-    });
-
-    writeIndex(newIndex);
-
-    if (branchHash) {
-        writeHEAD(`ref: refs/heads/${target}`);
-        console.log(`Switched to branch '${target}'`);
-    } else {
-        writeHEAD(commitHash);
-        console.log(`Checked out ${commitHash.slice(0, 7)}`);
+    // 3. Remove working-tree files that are NOT in the target tree
+    const currentFiles = getWorkingFiles('.');
+    for (var i = 0; i < currentFiles.length; i++) {
+        const f = currentFiles[i];
+        const normalised = f.replace(/^\.\//, '');
+        if (!(normalised in targetFiles) && !(f in targetFiles)) {
+            fs.rmSync(f, { force: true });
+        }
     }
+
+    // 4. Write every file from the target tree to disk
+    const entries = Object.entries(targetFiles);
+    for (var j = 0; j < entries.length; j++) {
+        const filePath = entries[j][0];
+        const blobHash = entries[j][1];
+        const blobObj = readObject(blobHash);
+        const dir = path.dirname(filePath);
+        if (dir && dir !== '.') fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(filePath, blobObj.content, 'utf-8');
+    }
+
+    // 5. Update the index to exactly match the target tree
+    writeIndex(targetFiles);
+
+    // 6. Point HEAD at the target branch
+    writeHEAD('ref: refs/heads/' + targetBranch);
+
+    console.log("Switched to branch '" + targetBranch + "'");
 }
 
 module.exports = checkout;

@@ -4,7 +4,22 @@ const { readObject, writeObject } = require('../lib/objects');
 const { readIndex } = require('../lib/index');
 const { readRef, readHEAD } = require('../lib/refs');
 
-const IGNORE = ['cli.js', 'commands', 'lib', 'node_modules', 'package.json', 'package-lock.json', 'test', '.git'];
+const IGNORE = ['.vcs', '.git', 'node_modules', 'package-lock.json', 'package.json', 'cli.js', 'commands', 'lib', 'test'];
+
+function getAllFiles(dir = '.') {
+    const results = [];
+    for (const entry of fs.readdirSync(dir)) {
+        if (entry.startsWith('.')) continue;
+        if (IGNORE.includes(entry)) continue;
+        const full = require('path').join(dir, entry);
+        if (fs.statSync(full).isDirectory()) {
+            results.push(...getAllFiles(full));
+        } else {
+            results.push(full.replace(/\\/g, '/').replace(/^\.\//, ''));
+        }
+    }
+    return results;
+}
 
 function status() {
     const index = readIndex();
@@ -46,8 +61,8 @@ function status() {
         }
     }
 
-    const untracked = fs.readdirSync('.')
-        .filter(f => !f.startsWith('.') && !index[f] && !IGNORE.includes(f))
+    const untracked = getAllFiles('.')
+        .filter(f => !index[f])
         .map(f => chalk.gray(`  ${f}`));
 
     const onBranch = branch

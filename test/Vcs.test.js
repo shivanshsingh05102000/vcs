@@ -116,3 +116,101 @@ test('buildCommit creates readable commit', () => {
 // ─── summary ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
+// ─── P0 regression tests ──────────────────────────────────────────────────────
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+// helper: run test inside a temp vcs repo
+function withRepo(fn) {
+    const orig = process.cwd();
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vcs-test-'));
+    process.chdir(tmp);
+    require('../commands/init')();
+    try { fn(tmp); } finally {
+        process.chdir(orig);
+        fs.rmSync(tmp, { recursive: true, force: true });
+    }
+}
+
+console.log('\n🔧 P0 regressions');
+
+test('P0-1: checkout removes files not in target branch', () => {
+    withRepo(() => {
+        const add      = require('../commands/add');
+        const commit   = require('../commands/commit');
+        const branch   = require('../commands/branch');
+        const checkout = require('../commands/checkout');
+
+        // commit alpha.txt on main
+        fs.writeFileSync('alpha.txt', 'alpha');
+        add(['alpha.txt']);
+        commit(['-m', 'add alpha']);
+
+        // create feature branch, add beta.txt
+        branch(['feature']);
+        checkout(['feature']);
+        fs.writeFileSync('beta.txt', 'beta');
+        add(['beta.txt']);
+        commit(['-m', 'add beta']);
+
+        // go back to main — beta.txt must be gone
+        checkout(['main']);
+        assert.ok(!fs.existsSync('beta.txt'), 'beta.txt should be deleted on checkout to main');
+        assert.ok(fs.existsSync('alpha.txt'), 'alpha.txt should still exist');
+    });
+});
+
+test('P0-2: merge conflict does not stage conflict-marker blob', () => {
+    withRepo(() => {
+        const add    = require('../commands/add');
+        const commit = require('../commands/commit');
+        const branch = require('../commands/branch');
+        const checkout = require('../commands/checkout');
+        const merge  = require('../commands/merge');
+        const { readIndex } = require('../lib/index');
+        const { readObject } = require('../lib/objects');
+
+        // base commit
+        fs.writeFileSync('file.txt', 'hello\nworld\n');
+        add(['file.txt']);
+        commit(['-m', 'base']);
+
+        // feature branch changes same line
+        branch(['feature']);
+        checkout(['feature']);
+        fs.writeFileSync('file.txt', 'hello\nmars\n');
+        add(['file.txt']);
+        commit(['-m', 'feature change']);
+
+        // back to main, conflicting change
+        checkout(['main']);
+        fs.writeFileSync('file.txt', 'hello\nearth\n');
+        add(['file.txt']);
+        commit(['-m', 'main change']);
+
+        merge(['feature']);
+
+        // index must not contain conflict markers
+        const idx = readIndex();
+        const blob = readObject(idx['file.txt']);
+        assert.ok(!blob.content.includes('<<<<<<<'), 'index must not contain conflict markers after merge');
+    });
+});
+
+test('P0-3: status detects untracked files in subdirectories', () => {
+    withRepo(() => {
+        fs.mkdirSync('src', { recursive: true });
+        fs.writeFileSync('src/app.js', 'console.log(1)');
+
+        // capture console output
+        const lines = [];
+        const orig = console.log;
+        console.log = (...a) => lines.push(a.join(' '));
+        require('../commands/status')();
+        console.log = orig;
+
+        const output = lines.join('\n');
+        assert.ok(output.includes('src/app.js'), 'status should show src/app.js as untracked');
+    });
+});

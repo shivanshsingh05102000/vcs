@@ -92,9 +92,12 @@ function merge(args) {
         if (result.hasConflicts) {
             hasConflicts = true;
             console.log(`CONFLICT: ${file}`);
+            // don't stage the conflict-marker version — leave it unstaged
+            // so the user resolves it then runs: vcs add <file> && vcs commit
+            if (oursTree[file]) newIndex[file] = oursTree[file];
+        } else {
+            newIndex[file] = writeObject('blob', result.content);
         }
-
-        newIndex[file] = writeObject('blob', result.content);
     }
 
     writeIndex(newIndex);

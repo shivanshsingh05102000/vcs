@@ -10,6 +10,10 @@ const branch   = require('./commands/branch');
 const merge    = require('./commands/merge');
 const diff     = require('./commands/diff');
 const rm       = require('./commands/rm');
+const remote   = require('./commands/remote');
+const push     = require('./commands/push');
+const fetch    = require('./commands/fetch');
+const pull     = require('./commands/pull');
 
 const [,, command, ...args] = process.argv;
 
@@ -24,11 +28,15 @@ switch (command) {
     case 'merge':    merge(args);     break;
     case 'diff':     diff(args);      break;
     case 'rm':       rm(args);        break;
+    case 'remote':   remote(args);    break;
+    case 'push':     push(args).catch(e => console.error(e.message));    break;
+    case 'fetch':    fetch(args).catch(e => console.error(e.message));   break;
+    case 'pull':     pull(args).catch(e => console.error(e.message));    break;
     default:
         if (command) {
             console.error(`Unknown command: ${command}`);
         } else {
             console.log('Usage: vcs <command> [args]');
-            console.log('Commands: init, add, commit, status, log, branch, checkout, merge, diff, rm');
+            console.log('Commands: init, add, commit, status, log, branch, checkout, merge, diff, rm, remote, push, fetch, pull');
         }
 }
