@@ -17,7 +17,7 @@ const pull     = require('./commands/pull');
 const clone = require('./commands/clone');
 
 const [,, command, ...args] = process.argv;
-
+//Scorpy was here 
 switch (command) {
     case 'init':     init();          break;
     case 'add':      add(args);       break;
