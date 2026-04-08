@@ -14,6 +14,7 @@ const remote   = require('./commands/remote');
 const push     = require('./commands/push');
 const fetch    = require('./commands/fetch');
 const pull     = require('./commands/pull');
+const clone = require('./commands/clone');
 
 const [,, command, ...args] = process.argv;
 
@@ -32,6 +33,7 @@ switch (command) {
     case 'push':     push(args).catch(e => console.error(e.message));    break;
     case 'fetch':    fetch(args).catch(e => console.error(e.message));   break;
     case 'pull':     pull(args).catch(e => console.error(e.message));    break;
+    case 'clone':    clone(args).catch(e => console.error(e.message));   break;
     default:
         if (command) {
             console.error(`Unknown command: ${command}`);
