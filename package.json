@@ -22,12 +22,13 @@
     "test": "test"
   },
   "scripts": {
-    "start":  "node server/index.js",
+    "start": "node server/index.js",
+    "build": "npm rebuild better-sqlite3",
     "test": "node test/vcs.test.js && node test/server.test.js && node test/p2.test.js",
     "server": "node server/index.js",
     "server:dev": "node --watch server/index.js",
     "test:p2": "node test/p2.test.js"
-  },
+},
   "dependencies": {
     "better-sqlite3": "^12.8.0",
     "chalk": "^4.1.2",
